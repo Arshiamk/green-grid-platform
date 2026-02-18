@@ -26,8 +26,8 @@ class BillAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("id", "bill", "amount", "status", "payment_method", "created_at")
-    list_filter = ("status", "payment_method", "created_at")
+    list_display = ("id", "bill", "amount", "status", "created_at")
+    list_filter = ("status", "created_at")
     search_fields = ("bill__id", "stripe_payment_intent_id")
     raw_id_fields = ("bill",)
     date_hierarchy = "created_at"
