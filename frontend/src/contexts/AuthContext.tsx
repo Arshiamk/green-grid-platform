@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"
-import api from "@/api/axios"
 
 interface AuthContextType {
   token: string | null
@@ -16,15 +15,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any | null>(null)
 
   useEffect(() => {
-    if (token) {
-      // Decode token or fetch user profile? 
-      // For now, just trust the token exists. 
-      // Ideally we'd hit /api/me/ or decode JWT to get username.
-      // We can persist username in localStorage too for UI.
-      const username = localStorage.getItem("username")
-      if (username) setUser({ username })
+    const savedToken = localStorage.getItem("token")
+    const savedUsername = localStorage.getItem("username")
+    
+    if (savedToken && !token) {
+      setToken(savedToken)
     }
-  }, [token])
+    
+    if (savedUsername && !user) {
+      setUser({ username: savedUsername })
+    }
+  }, [token, user])
 
   const login = (newToken: string, username: string) => {
     localStorage.setItem("token", newToken)
