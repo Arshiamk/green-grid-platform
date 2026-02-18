@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Helvetica, sans-serif;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .details {
+        margin-bottom: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      .total {
+        font-weight: bold;
+        text-align: right;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>Green Grid Platform</h1>
+      <h2>Electricity Bill</h2>
+    </div>
+
+    <div class="details">
+      <p>
+        <strong>Customer:</strong> {{ bill.customer.first_name }} {{
+        bill.customer.last_name }}
+      </p>
+      <p><strong>Account Number:</strong> {{ bill.customer.account_number }}</p>
+      <p>
+        <strong>Period:</strong> {{ bill.period_start }} to {{ bill.period_end
+        }}
+      </p>
+      <p><strong>Date Issued:</strong> {{ bill.generated_at|date:"Y-m-d" }}</p>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Amount (£)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in bill.line_items.all %}
+        <tr>
+          <td>{{ item.description }}</td>
+          <td>{{ item.amount }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="total">
+      <p>Total Due: £{{ bill.total_amount }}</p>
+      <p>Status: {{ bill.status }}</p>
+    </div>
+  </body>
+</html>
