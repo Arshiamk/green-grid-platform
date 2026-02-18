@@ -7,6 +7,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+interface Reading {
+  id: string
+  reading_at: string
+  value_kwh: string
+  source: string
+}
+
 export default function Meters() {
   const { data: readings } = useReadings()
 
@@ -42,7 +49,7 @@ export default function Meters() {
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {readings?.map((reading: any) => (
+                {readings?.map((reading: Reading) => (
                   <tr
                     key={reading.id}
                     className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"

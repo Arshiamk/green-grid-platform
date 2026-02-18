@@ -10,6 +10,15 @@ import {
 import { Button } from "@/components/ui/button"
 import PaymentModal from "@/components/billing/PaymentModal"
 
+interface Bill {
+  id: string
+  period_start: string
+  period_end: string
+  total_amount: string
+  status: string
+  generated_at: string
+}
+
 export default function Billing() {
   const { data: bills, isLoading, refetch } = useBills()
   const [selectedBill, setSelectedBill] = useState<{ id: string; amount: number } | null>(null)
@@ -46,7 +55,7 @@ export default function Billing() {
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {bills?.map((bill: any) => (
+                {bills?.map((bill: Bill) => (
                   <tr
                     key={bill.id}
                     className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
