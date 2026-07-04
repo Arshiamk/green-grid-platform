@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext"
-import { Bell, Search } from "lucide-react"
+import { Search } from "lucide-react"
 
 export default function Topbar() {
   const { user } = useAuth()
@@ -18,20 +18,13 @@ export default function Topbar() {
       </div>
 
       <div className="flex items-center gap-6">
-        <button className="relative text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-          <Bell className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white border-2 border-white dark:border-slate-950">
-            3
-          </span>
-        </button>
-        
         <div className="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-800">
           <div className="flex flex-col items-end">
             <span className="text-sm font-bold text-slate-900 dark:text-white capitalize">
               {user?.username}
             </span>
             <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
-              Staff Member
+              Customer Account
             </span>
           </div>
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-emerald-600 shadow-md shadow-primary/20 flex items-center justify-center text-white font-bold">

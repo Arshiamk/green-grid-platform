@@ -1,8 +1,10 @@
-import { useBills } from "@/hooks/useBills"
+import { useMemo, useState } from "react"
+import { useBills, isOutstanding } from "@/hooks/useBills"
 import { useReadings } from "@/hooks/useReadings"
+import { useAnomalies, AnomalySeverity } from "@/hooks/useAnomalies"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
-import { TrendingUp, Wallet, Zap, Calendar, ArrowUpRight } from "lucide-react"
+import { TrendingDown, TrendingUp, Wallet, Zap, Receipt } from "lucide-react"
 import { motion } from "framer-motion"
 
 const container = {
@@ -20,30 +22,76 @@ const item = {
   show: { opacity: 1, y: 0 }
 }
 
+const severityStyles: Record<AnomalySeverity, string> = {
+  critical: "bg-red-500",
+  warning: "bg-amber-500",
+  info: "bg-blue-500",
+}
+
+const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+
 export default function Dashboard() {
   const { data: bills, isLoading: isLoadingBills } = useBills()
   const { data: readings, isLoading: isLoadingReadings } = useReadings()
+  const { data: anomalies, isLoading: isLoadingAnomalies } = useAnomalies()
+  const [rangeDays, setRangeDays] = useState<7 | 30>(7)
 
-  const currentBalance = bills
-    ?.filter((b) => b.status !== "PAID")
-    .reduce((sum, b) => sum + parseFloat(b.total_amount), 0)
+  const outstandingBills = bills?.filter(isOutstanding) ?? []
+  const outstandingBalance = outstandingBills
+    .reduce((sum, b) => sum + parseFloat(b.total_pounds), 0)
     .toFixed(2)
 
-  const currentMonth = new Date().getMonth()
-  const usageThisMonth = readings
-    ?.filter((r) => new Date(r.reading_at).getMonth() === currentMonth)
-    .reduce((sum, r) => sum + parseFloat(r.value_kwh), 0)
-    .toFixed(1)
+  // Month-to-date usage vs the same day range last month (real readings only)
+  const now = new Date()
+  const monthToDateKwh = (monthOffset: number) => {
+    const target = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+    return (readings ?? [])
+      .filter((r) => {
+        const t = new Date(r.reading_at)
+        return (
+          t.getFullYear() === target.getFullYear() &&
+          t.getMonth() === target.getMonth() &&
+          t.getDate() <= now.getDate()
+        )
+      })
+      .reduce((sum, r) => sum + parseFloat(r.value_kwh), 0)
+  }
+  const usageThisMonth = monthToDateKwh(0)
+  const usageLastMonth = monthToDateKwh(-1)
+  const monthDeltaPct =
+    usageLastMonth > 0
+      ? ((usageThisMonth - usageLastMonth) / usageLastMonth) * 100
+      : null
 
-  const chartData = readings
-    ?.slice(0, 7)
-    .map((r) => ({
-      date: new Date(r.reading_at).toLocaleDateString("en-GB", { weekday: 'short' }),
-      usage: parseFloat(r.value_kwh),
-    }))
-    .reverse()
+  // Latest bill (API returns bills newest period first)
+  const latestBill = bills?.[0]
 
-  if (isLoadingBills || isLoadingReadings) {
+  // Daily consumption totals for the selected range
+  const chartData = useMemo(() => {
+    if (!readings?.length) return []
+    const totals = new Map<string, number>()
+    for (const r of readings) {
+      const key = dayKey(new Date(r.reading_at))
+      totals.set(key, (totals.get(key) ?? 0) + parseFloat(r.value_kwh))
+    }
+    const today = new Date()
+    const days = []
+    for (let i = rangeDays - 1; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i)
+      days.push({
+        date: d.toLocaleDateString(
+          "en-GB",
+          rangeDays === 7 ? { weekday: "short" } : { day: "numeric", month: "short" },
+        ),
+        usage: Number((totals.get(dayKey(d)) ?? 0).toFixed(2)),
+      })
+    }
+    return days
+  }, [readings, rangeDays])
+
+  const recentAlerts = anomalies?.slice(0, 4) ?? []
+
+  if (isLoadingBills || isLoadingReadings || isLoadingAnomalies) {
     return (
       <div className="flex h-[400px] w-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -52,7 +100,7 @@ export default function Dashboard() {
   }
 
   return (
-    <motion.div 
+    <motion.div
       variants={container}
       initial="hidden"
       animate="show"
@@ -76,10 +124,11 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold heading-display">£{currentBalance || "0.00"}</div>
+              <div className="text-3xl font-bold heading-display">£{outstandingBalance}</div>
               <div className="mt-2 flex items-center text-xs font-semibold text-slate-400">
-                <span className="capitalize">{bills?.length} pending invoices</span>
-                <ArrowUpRight className="ml-1 h-3 w-3" />
+                <span>
+                  {outstandingBills.length} unpaid {outstandingBills.length === 1 ? "bill" : "bills"}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -95,11 +144,28 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold heading-display">{usageThisMonth || "0"} kWh</div>
-              <div className="mt-2 flex items-center text-xs font-semibold text-emerald-500">
-                <TrendingUp className="mr-1 h-3 w-3" />
-                <span>+2% from last month</span>
-              </div>
+              <div className="text-3xl font-bold heading-display">{usageThisMonth.toFixed(1)} kWh</div>
+              {monthDeltaPct !== null ? (
+                <div
+                  className={`mt-2 flex items-center text-xs font-semibold ${
+                    monthDeltaPct > 0 ? "text-orange-500" : "text-emerald-500"
+                  }`}
+                >
+                  {monthDeltaPct > 0 ? (
+                    <TrendingUp className="mr-1 h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="mr-1 h-3 w-3" />
+                  )}
+                  <span>
+                    {monthDeltaPct > 0 ? "+" : ""}
+                    {monthDeltaPct.toFixed(1)}% vs same period last month
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-2 text-xs font-semibold text-slate-400">
+                  No data for last month yet
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -108,16 +174,29 @@ export default function Dashboard() {
           <Card className="glass relative overflow-hidden border-none transition-all hover:shadow-2xl">
             <div className="absolute right-[-20px] top-[-20px] h-24 w-24 rounded-full bg-blue-500/5" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Next Billing Cycle</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Latest Bill</CardTitle>
               <div className="rounded-xl bg-blue-100 dark:bg-blue-500/10 p-2 text-blue-600 dark:text-blue-400">
-                <Calendar className="h-5 w-5" />
+                <Receipt className="h-5 w-5" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold heading-display">March 1st</div>
-              <div className="mt-2 text-xs font-semibold text-slate-400">
-                Auto-generation scheduled
-              </div>
+              {latestBill ? (
+                <>
+                  <div className="text-3xl font-bold heading-display">£{latestBill.total_pounds}</div>
+                  <div className="mt-2 text-xs font-semibold text-slate-400">
+                    {new Date(latestBill.period_start).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    {" – "}
+                    {new Date(latestBill.period_end).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    {" · "}
+                    <span className="capitalize">{latestBill.status}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-3xl font-bold heading-display">—</div>
+                  <div className="mt-2 text-xs font-semibold text-slate-400">No bills issued yet</div>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -129,17 +208,21 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-bold tracking-tight">Consumption Trends</CardTitle>
-                <p className="text-xs text-slate-500 font-medium">Daily kWh metrics for the current cycle</p>
+                <p className="text-xs text-slate-500 font-medium">Total kWh per day from your meter readings</p>
               </div>
-              <select className="text-xs font-bold bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 outline-none">
-                <option>Last 7 Days</option>
-                <option>Last 30 Days</option>
+              <select
+                className="text-xs font-bold bg-slate-100 dark:bg-slate-900 border-none rounded-lg p-2 outline-none"
+                value={rangeDays}
+                onChange={(e) => setRangeDays(Number(e.target.value) === 30 ? 30 : 7)}
+              >
+                <option value={7}>Last 7 Days</option>
+                <option value={30}>Last 30 Days</option>
               </select>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="h-[280px] w-full">
-              {chartData && chartData.length > 0 ? (
+              {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
                     <defs>
@@ -148,27 +231,28 @@ export default function Dashboard() {
                         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
                       </linearGradient>
                     </defs>
-                    <XAxis 
-                      dataKey="date" 
-                      fontSize={11} 
+                    <XAxis
+                      dataKey="date"
+                      fontSize={11}
                       fontWeight={600}
-                      tickLine={false} 
-                      axisLine={false} 
+                      tickLine={false}
+                      axisLine={false}
+                      interval={rangeDays === 7 ? 0 : "preserveStartEnd"}
                       tick={{ fill: 'currentColor', opacity: 0.5 }}
                     />
-                    <YAxis 
-                      fontSize={11} 
+                    <YAxis
+                      fontSize={11}
                       fontWeight={600}
-                      tickLine={false} 
-                      axisLine={false} 
-                      tickFormatter={(value) => `${value}kWh`} 
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `${value}kWh`}
                       tick={{ fill: 'currentColor', opacity: 0.5 }}
                     />
-                    <Tooltip 
+                    <Tooltip
                       cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                      contentStyle={{ 
-                        borderRadius: '12px', 
-                        border: 'none', 
+                      contentStyle={{
+                        borderRadius: '12px',
+                        border: 'none',
                         boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
                         fontSize: '12px',
                         fontWeight: 'bold'
@@ -192,30 +276,37 @@ export default function Dashboard() {
 
         <Card className="glass col-span-full border-none lg:col-span-3 shadow-xl">
           <CardHeader>
-              <CardTitle className="text-xl font-bold tracking-tight">Grid Health</CardTitle>
-              <p className="text-xs text-slate-500 font-medium">Real-time infrastructure status</p>
+              <CardTitle className="text-xl font-bold tracking-tight">Meter Alerts</CardTitle>
+              <p className="text-xs text-slate-500 font-medium">Anomalies detected in your readings</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {[
-                { name: "South Grid Segment", status: "Optimal", color: "bg-emerald-500" },
-                { name: "Central Hub", status: "Optimal", color: "bg-emerald-500" },
-                { name: "Forecasting Engine", status: "Syncing", color: "bg-blue-500" },
-                { name: "Billing Microservice", status: "Standby", color: "bg-slate-300 dark:bg-slate-700" }
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-2 w-2 rounded-full ${item.color} shadow-[0_0_8px_rgba(0,0,0,0.2)]`} />
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{item.name}</span>
+            {recentAlerts.length > 0 ? (
+              <div className="space-y-6">
+                {recentAlerts.map((alert) => (
+                  <div key={alert.id} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`h-2 w-2 shrink-0 rounded-full ${severityStyles[alert.severity]} shadow-[0_0_8px_rgba(0,0,0,0.2)]`} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-700 dark:text-slate-300">{alert.title}</p>
+                        <p className="text-[10px] font-medium text-slate-400">
+                          {new Date(alert.detected_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                      {alert.is_resolved ? "Resolved" : alert.severity}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{item.status}</span>
-                </div>
-              ))}
-              <div className="mt-4 rounded-xl bg-primary/5 p-4 text-center">
-                <p className="text-xs font-bold text-primary">System load is 12% below average</p>
-                <p className="mt-1 text-[10px] text-slate-400 font-medium">Auto-scaling currently inactive</p>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="flex h-[200px] flex-col items-center justify-center text-center">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">All clear</p>
+                <p className="mt-1 text-xs font-medium text-slate-400">
+                  No anomalies detected in your meter data.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

@@ -2,14 +2,17 @@ import { useQuery } from "@tanstack/react-query"
 import api from "@/api/axios"
 
 export interface MeterReading {
-  id: string
+  id: number
   meter: string
-  value_kwh: string
+  meter_mpan: string
   reading_at: string
-  source: string
+  value_kwh: string
+  reading_type: "actual" | "estimated"
+  created_at: string
 }
 
 const fetchReadings = async () => {
+  // Ordered newest-first by the API (default ordering: -reading_at)
   const { data } = await api.get<MeterReading[]>("/metering/readings/")
   return data
 }

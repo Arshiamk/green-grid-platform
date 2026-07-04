@@ -1,4 +1,4 @@
-import { useReadings } from "@/hooks/useReadings"
+import { useReadings, MeterReading } from "@/hooks/useReadings"
 import {
   Card,
   CardContent,
@@ -7,23 +7,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-interface Reading {
-  id: string
-  reading_at: string
-  value_kwh: string
-  source: string
-}
-
 export default function Meters() {
   const { data: readings } = useReadings()
-
-  // This should really be a file upload for CSV or a select for Meter ID.
-  // For simplicity, we assume we are submitting for the first meter found (or hardcoded ID if we had it).
-  // But wait, the API requires a Meter ID. I don't have a hook for Meters list yet, only Readings.
-  // I should fetch Meters first.
-  
-  // Actually, let's just show the list for now. The mutation is complex without selecting a meter.
-  // I'll stick to listing readings.
 
   return (
     <div className="space-y-6">
@@ -41,15 +26,18 @@ export default function Meters() {
                     Date
                   </th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                    Meter
+                  </th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
                     Reading (kWh)
                   </th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
-                    Source
+                    Type
                   </th>
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
-                {readings?.map((reading: Reading) => (
+                {readings?.map((reading: MeterReading) => (
                   <tr
                     key={reading.id}
                     className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
@@ -57,15 +45,16 @@ export default function Meters() {
                     <td className="p-4 align-middle">
                       {new Date(reading.reading_at).toLocaleString()}
                     </td>
+                    <td className="p-4 align-middle">{reading.meter_mpan}</td>
                     <td className="p-4 align-middle font-semibold">
                       {reading.value_kwh}
                     </td>
-                    <td className="p-4 align-middle">{reading.source}</td>
+                    <td className="p-4 align-middle capitalize">{reading.reading_type}</td>
                   </tr>
                 ))}
                  {!readings?.length && (
                   <tr>
-                    <td colSpan={3} className="p-4 text-center text-muted-foreground">
+                    <td colSpan={4} className="p-4 text-center text-muted-foreground">
                       No readings found.
                     </td>
                   </tr>
@@ -75,11 +64,6 @@ export default function Meters() {
           </div>
         </CardContent>
       </Card>
-      
-      {/* 
-        Future: Add form to submit reading manually.
-        Need to fetch Meters list first to let user select which meter.
-      */}
     </div>
   )
 }

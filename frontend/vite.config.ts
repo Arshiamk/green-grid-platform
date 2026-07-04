@@ -9,4 +9,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    // Mirror the nginx setup used in Docker: the SPA calls /api on its own
+    // origin and the dev server forwards it to the Django backend.
+    proxy: {
+      "/api": "http://localhost:8000",
+    },
+  },
 })

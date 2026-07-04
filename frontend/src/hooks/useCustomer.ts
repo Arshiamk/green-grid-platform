@@ -11,9 +11,9 @@ export interface Customer {
 }
 
 const fetchCustomer = async () => {
-  const { data } = await api.get<{ results: Customer[] }>("/customers/")
-  // Assuming the user has only one customer profile linked
-  return data.results[0]
+  // Non-staff users only ever see their own customer record
+  const { data } = await api.get<Customer[]>("/customers/")
+  return data[0] ?? null
 }
 
 export function useCustomer() {
