@@ -14,6 +14,14 @@ venv/
 # Environment
 .env
 
+# Logs & local debug output
+*.log
+logs*.txt
+*_logs.txt
+debug_output.txt
+check_error.txt
+gunicorn.ctl
+
 # IDE
 .vscode/
 .idea/

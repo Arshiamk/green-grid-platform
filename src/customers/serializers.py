@@ -44,6 +44,6 @@ class CustomerListSerializer(serializers.ModelSerializer):
         model = Customer
         fields = [
             "id", "account_number", "first_name", "last_name",
-            "email", "created_at",
+            "email", "phone", "created_at",
         ]
         read_only_fields = ["id", "created_at"]

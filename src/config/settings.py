@@ -29,6 +29,23 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
 # ---------------------------------------------------------------------------
+# Production security hardening — applies whenever DEBUG is off.
+# Defaults are safe for a TLS-terminated deployment; individual flags can be
+# relaxed via environment variables (e.g. SECURE_SSL_REDIRECT=0 behind a
+# proxy that already enforces HTTPS).
+# ---------------------------------------------------------------------------
+if not DEBUG:
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = "same-origin"
+
+# ---------------------------------------------------------------------------
 # Installed apps
 # ---------------------------------------------------------------------------
 INSTALLED_APPS = [

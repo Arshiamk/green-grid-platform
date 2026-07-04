@@ -1,4 +1,4 @@
-name: Pro CI Pipeline
+name: CI
 
 on:
   push:

@@ -28,4 +28,6 @@ waitress
 django-cors-headers
 stripe
 django-jazzmin
-# xhtml2pdf  <-- Temporarily removed to unblock build
+
+# Optional: enables PDF bill generation (billing/pdf_views.py returns 501 without it)
+# xhtml2pdf
