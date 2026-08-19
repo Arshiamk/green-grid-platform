@@ -10,6 +10,7 @@ jobs:
   backend-quality:
     name: Backend (Lint & Test)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +41,7 @@ jobs:
   frontend-quality:
     name: Frontend (Lint & Build)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
