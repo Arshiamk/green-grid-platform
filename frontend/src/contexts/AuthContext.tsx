@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, ReactNode } from "react"
 
 interface User {
   username: string
@@ -15,21 +15,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("token"))
-  const [user, setUser] = useState<User | null>(null)
-
-  useEffect(() => {
-    const savedToken = localStorage.getItem("token")
+  // Read persisted auth straight into initial state. Doing this in an effect
+  // instead would render once signed-out before correcting itself.
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"))
+  const [user, setUser] = useState<User | null>(() => {
     const savedUsername = localStorage.getItem("username")
-    
-    if (savedToken && !token) {
-      setToken(savedToken)
-    }
-    
-    if (savedUsername && !user) {
-      setUser({ username: savedUsername })
-    }
-  }, [token, user])
+    return savedUsername ? { username: savedUsername } : null
+  })
 
   const login = (newToken: string, username: string) => {
     localStorage.setItem("token", newToken)

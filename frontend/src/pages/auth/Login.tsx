@@ -26,7 +26,7 @@ export default function Login() {
       const response = await api.post("/token/", { username, password })
       login(response.data.access, username)
       navigate("/")
-    } catch (err) {
+    } catch {
       setError("Invalid username or password")
     } finally {
       setIsLoading(false)
