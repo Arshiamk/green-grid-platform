@@ -9,7 +9,7 @@ click-repl==0.3.0
 colorama==0.4.6
 Django<6.0
 django-environ==0.13.0
-djangorestframework==3.16.1
+djangorestframework==3.17.2
 djangorestframework-simplejwt
 gunicorn==25.1.0
 kombu==5.6.2
